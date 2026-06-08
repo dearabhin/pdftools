@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Page Remover — PDF Toolkit</title>
+<meta name="description" content="Remove unwanted pages from a PDF in your browser. Private, free and no uploads.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+
+<style>
+:root{
+    --grad:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#ec4899 100%);
+    --indigo:#6366f1;--violet:#8b5cf6;--pink:#ec4899;
+    --text:#1e293b;--muted:#64748b;--card:#fff;--line:#e2e8f0;--bg:#f8fafc;
+    --accent:#f43f5e;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;flex-direction:column;
+}
+a{text-decoration:none;color:inherit;}
+
+/* header */
+.site-header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(255,255,255,.85);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 20px;
+}
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem;}
+.brand .logo{
+    width:32px;height:32px;border-radius:9px;background:var(--grad);
+    display:grid;place-items:center;color:#fff;font-size:16px;
+}
+.back-link{
+    display:inline-flex;align-items:center;gap:7px;color:var(--muted);
+    font-size:.92rem;font-weight:500;padding:8px 14px;border-radius:9px;transition:.2s;
+}
+.back-link:hover{background:#f1f5f9;color:var(--text);}
+.back-link svg{width:16px;height:16px;}
+
+/* page wrap */
+.wrap{max-width:1200px;margin:0 auto;padding:34px 20px 60px;width:100%;flex:1;}
+
+.tool-hero{text-align:center;margin-bottom:30px;}
+.tool-hero .pill{
+    display:inline-flex;align-items:center;gap:9px;
+    width:60px;height:60px;border-radius:16px;margin-bottom:16px;
+    background:linear-gradient(135deg,#f43f5e,#ec4899);justify-content:center;
+}
+.tool-hero .pill svg{width:30px;height:30px;stroke:#fff;fill:none;stroke-width:2;}
+.tool-hero h1{font-size:clamp(1.7rem,5vw,2.4rem);font-weight:800;letter-spacing:-.02em;}
+.tool-hero p{color:var(--muted);margin-top:8px;font-size:1.02rem;max-width:560px;margin-left:auto;margin-right:auto;}
+
+/* toolbar */
+.panel{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:22px;margin-bottom:24px;box-shadow:0 1px 3px rgba(15,17,21,.04);
+}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;}
+
+/* file input */
+.file-field{position:relative;flex:1;min-width:240px;}
+.file-field input[type=file]{
+    width:100%;font-size:.92rem;color:var(--muted);
+    padding:12px;background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:11px;cursor:pointer;
+}
+.file-field input[type=file]::file-selector-button{
+    margin-right:14px;border:none;background:var(--grad);color:#fff;
+    padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:.9rem;
+}
+
+/* buttons */
+button{
+    font-family:inherit;padding:12px 20px;border:none;border-radius:11px;cursor:pointer;
+    font-size:.95rem;font-weight:600;transition:transform .15s,box-shadow .2s,opacity .2s,background .2s;
+    min-height:46px;
+}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 6px 18px rgba(139,92,246,.35);}
+.btn-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 24px rgba(139,92,246,.45);}
+.btn-danger{background:linear-gradient(135deg,#f43f5e,#ec4899);color:#fff;box-shadow:0 6px 18px rgba(244,63,94,.32);}
+.btn-danger:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 24px rgba(244,63,94,.42);}
+.btn-ghost{background:#f1f5f9;color:#334155;}
+.btn-ghost:hover:not(:disabled){background:#e2e8f0;}
+button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+
+.info{
+    text-align:center;font-weight:600;color:var(--muted);margin-bottom:20px;
+    display:inline-flex;align-items:center;gap:8px;width:100%;justify-content:center;
+}
+
+/* preview grid */
+#pdfPreview{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;
+}
+.page-card{
+    background:var(--card);border-radius:12px;padding:10px;border:3px solid transparent;
+    cursor:pointer;box-shadow:0 2px 8px rgba(15,17,21,.08);transition:transform .2s,box-shadow .2s,border-color .2s;
+    position:relative;
+}
+.page-card:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(15,17,21,.14);}
+.page-card.selected{border-color:var(--accent);background:#fff1f2;}
+.page-card.selected::after{
+    content:"✕";position:absolute;top:14px;right:14px;width:26px;height:26px;border-radius:50%;
+    background:var(--accent);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700;
+    box-shadow:0 2px 6px rgba(244,63,94,.4);
+}
+.page-card canvas{width:100%;display:block;border:1px solid var(--line);border-radius:6px;}
+.page-number{text-align:center;margin-top:9px;font-weight:600;font-size:.9rem;color:var(--muted);}
+
+.empty{
+    text-align:center;color:#94a3b8;padding:50px 20px;border:2px dashed var(--line);
+    border-radius:16px;background:#fff;
+}
+.empty svg{width:46px;height:46px;stroke:#cbd5e1;fill:none;stroke-width:1.5;margin-bottom:12px;}
+
+/* footer */
+.site-footer{background:#0f1115;color:#cbd5e1;padding:46px 20px 34px;text-align:center;}
+.footer-name{font-size:1.2rem;font-weight:700;color:#fff;margin-bottom:6px;}
+.footer-name .accent{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.footer-tag{color:#94a3b8;font-size:.92rem;margin-bottom:22px;}
+.socials{display:flex;justify-content:center;gap:13px;flex-wrap:wrap;margin-bottom:26px;}
+.socials a{
+    display:inline-flex;align-items:center;gap:9px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);padding:10px 17px;border-radius:10px;
+    font-size:.9rem;font-weight:500;color:#e2e8f0;transition:.2s;
+}
+.socials a:hover{background:rgba(255,255,255,.12);transform:translateY(-2px);border-color:rgba(139,92,246,.6);}
+.socials svg{width:18px;height:18px;fill:currentColor;}
+.copyright{color:#64748b;font-size:.84rem;border-top:1px solid rgba(255,255,255,.08);padding-top:22px;max-width:1100px;margin:0 auto;}
+
+@media(max-width:600px){
+    .wrap{padding:26px 16px 50px;}
+    .panel{padding:16px;}
+    #pdfPreview{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;}
+    .toolbar button{flex:1 1 100%;}
+    .file-field{min-width:100%;}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+    <a href="index.html" class="brand"><span class="logo">📄</span> PDF Toolkit</a>
+    <a href="index.html" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+        All tools
+    </a>
+</header>
+
+<div class="wrap">
+
+    <div class="tool-hero">
+        <div class="pill">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9.5 13.5h5"/></svg>
+        </div>
+        <h1>PDF Page Remover</h1>
+        <p>Upload a PDF, tap the pages you want gone, and download a clean copy. Everything stays on your device.</p>
+    </div>
+
+    <div class="panel">
+        <div class="toolbar">
+            <div class="file-field">
+                <input type="file" id="pdfInput" accept="application/pdf">
+            </div>
+            <button id="selectAllBtn" class="btn-ghost" disabled>Select all</button>
+            <button id="deselectAllBtn" class="btn-ghost" disabled>Deselect all</button>
+            <button id="removeBtn" class="btn-danger" disabled>Remove &amp; download</button>
+        </div>
+    </div>
+
+    <div class="info" id="info">No PDF loaded</div>
+
+    <div id="pdfPreview">
+        <div class="empty">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <div>Choose a PDF above to preview its pages.</div>
+        </div>
+    </div>
+
+</div>
+
+<footer class="site-footer">
+    <div class="footer-name">Abhin <span class="accent">Krishna</span></div>
+    <div class="footer-tag">Designed &amp; built with care · Free forever</div>
+    <div class="socials">
+        <a href="https://abhinkrishna.com" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Website
+        </a>
+        <a href="https://github.com/dearabhin" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+            GitHub
+        </a>
+        <a href="https://linkedin.com/in/abhin-krishna" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M20.5 2h-17A1.5 1.5 0 0 0 2 3.5v17A1.5 1.5 0 0 0 3.5 22h17a1.5 1.5 0 0 0 1.5-1.5v-17A1.5 1.5 0 0 0 20.5 2zM8 19H5v-9h3zM6.5 8.3a1.7 1.7 0 1 1 0-3.5 1.7 1.7 0 0 1 0 3.5zM19 19h-3v-4.7c0-1.1 0-2.6-1.6-2.6S12.6 13 12.6 14.2V19h-3v-9h2.9v1.2h.04a3.2 3.2 0 0 1 2.9-1.6c3.1 0 3.7 2 3.7 4.7z"/></svg>
+            LinkedIn
+        </a>
+    </div>
+    <div class="copyright">© <span id="year"></span> Abhin Krishna. All rights reserved.</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+<script>
+document.getElementById("year").textContent=new Date().getFullYear();
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const pdfInput = document.getElementById("pdfInput");
+const pdfPreview = document.getElementById("pdfPreview");
+const removeBtn = document.getElementById("removeBtn");
+const selectAllBtn = document.getElementById("selectAllBtn");
+const deselectAllBtn = document.getElementById("deselectAllBtn");
+const info = document.getElementById("info");
+
+let pdfBytes = null;
+let totalPages = 0;
+let selectedPages = new Set();
+
+function updateInfo() {
+    info.textContent =
+        `Pages: ${totalPages} | Selected for removal: ${selectedPages.size}`;
+}
+
+pdfInput.addEventListener("change", async (e) => {
+
+    try {
+
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+        pdfPreview.innerHTML = "";
+        selectedPages.clear();
+
+        const buffer = await file.arrayBuffer();
+
+        pdfBytes = new Uint8Array(buffer);
+
+        const previewData = new Uint8Array(buffer.slice(0));
+
+        const pdf = await pdfjsLib.getDocument({
+            data: previewData
+        }).promise;
+
+        totalPages = pdf.numPages;
+
+        updateInfo();
+
+        selectAllBtn.disabled = false;
+        deselectAllBtn.disabled = false;
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+
+            const page = await pdf.getPage(pageNum);
+
+            const viewport = page.getViewport({
+                scale: 0.7
+            });
+
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({
+                canvasContext: context,
+                viewport
+            }).promise;
+
+            const card = document.createElement("div");
+            card.className = "page-card";
+
+            card.appendChild(canvas);
+
+            const pageLabel = document.createElement("div");
+            pageLabel.className = "page-number";
+            pageLabel.textContent = "Page " + pageNum;
+
+            card.appendChild(pageLabel);
+
+            card.addEventListener("click", () => {
+
+                if (selectedPages.has(pageNum)) {
+                    selectedPages.delete(pageNum);
+                    card.classList.remove("selected");
+                } else {
+                    selectedPages.add(pageNum);
+                    card.classList.add("selected");
+                }
+
+                removeBtn.disabled = selectedPages.size === 0;
+
+                updateInfo();
+            });
+
+            pdfPreview.appendChild(card);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert(err.message);
+    }
+});
+
+selectAllBtn.addEventListener("click", () => {
+
+    selectedPages.clear();
+
+    document.querySelectorAll(".page-card").forEach((card,index) => {
+        card.classList.add("selected");
+        selectedPages.add(index + 1);
+    });
+
+    removeBtn.disabled = false;
+
+    updateInfo();
+});
+
+deselectAllBtn.addEventListener("click", () => {
+
+    selectedPages.clear();
+
+    document.querySelectorAll(".page-card").forEach(card => {
+        card.classList.remove("selected");
+    });
+
+    removeBtn.disabled = true;
+
+    updateInfo();
+});
+
+removeBtn.addEventListener("click", async () => {
+
+    try {
+
+        if (!pdfBytes) {
+            alert("Please upload a PDF first.");
+            return;
+        }
+
+        const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+
+        const pageCount = pdfDoc.getPageCount();
+
+        if (selectedPages.size >= pageCount) {
+            alert("At least one page must remain.");
+            return;
+        }
+
+        const pagesToDelete = [...selectedPages]
+            .sort((a,b)=>b-a);
+
+        for (const pageNum of pagesToDelete) {
+            pdfDoc.removePage(pageNum - 1);
+        }
+
+        const modifiedPdfBytes = await pdfDoc.save();
+
+        const blob = new Blob(
+            [modifiedPdfBytes],
+            { type: "application/pdf" }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "modified.pdf";
+
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+    } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+    }
+});
+
+</script>
+
+</body>
+</html>
