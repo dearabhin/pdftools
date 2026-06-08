@@ -72,7 +72,13 @@ button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
     position:relative;cursor:move;border:1px solid var(--line);transition:transform .2s,box-shadow .2s;
 }
 .card:hover{transform:translateY(-4px);box-shadow:0 12px 24px rgba(15,17,21,.14);}
-.card img{width:100%;height:200px;object-fit:contain;border-radius:8px;background:#f1f5f9;}
+.page-preview{
+    width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    aspect-ratio:0.7071;/* A4 portrait default; overridden by JS */
+    box-shadow:inset 0 0 0 1px rgba(15,17,21,.02);
+}
+.page-preview img{max-width:100%;max-height:100%;object-fit:contain;display:block;}
 .remove{
     position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;
     background:#f43f5e;color:#fff;border:none;cursor:pointer;font-size:15px;line-height:1;
@@ -229,11 +235,49 @@ const PAGE_SIZES = {
     legal:  [612, 1008]
 };
 
+// Aspect ratio (width/height) of the currently selected page,
+// or null for "Fit to image" (each preview uses its own image).
+function currentPageRatio(){
+
+    if(pageSizeSelect.value === "fit")
+        return null;
+
+    let [w, h] = PAGE_SIZES[pageSizeSelect.value];
+
+    if(orientationSelect.value === "landscape")
+        [w, h] = [h, w];
+
+    return w / h;
+}
+
+// Shape every preview box like the selected page so the
+// thumbnail matches what the exported PDF page will look like.
+function applyPagePreview(){
+
+    const ratio = currentPageRatio();
+
+    document.querySelectorAll(".page-preview").forEach(box=>{
+
+        if(ratio === null){
+            const img = box.querySelector("img");
+            box.style.aspectRatio =
+                (img && img.naturalWidth)
+                    ? `${img.naturalWidth} / ${img.naturalHeight}`
+                    : "1 / 1";
+        } else {
+            box.style.aspectRatio = String(ratio);
+        }
+    });
+}
+
 // Orientation is meaningless when the page matches the image.
 pageSizeSelect.addEventListener("change", ()=>{
     orientationSelect.disabled =
         pageSizeSelect.value === "fit";
+    applyPagePreview();
 });
+
+orientationSelect.addEventListener("change", applyPagePreview);
 
 const images = [];
 
@@ -268,11 +312,16 @@ imageInput.addEventListener("change",(e)=>{
 
         card.innerHTML = `
             <button class="remove">×</button>
-            <img src="${url}">
+            <div class="page-preview"><img src="${url}"></div>
             <div class="filename">
                 ${file.name}
             </div>
         `;
+
+        // Re-apply the page shape once the image's natural
+        // dimensions are known (needed for "Fit to image").
+        card.querySelector("img")
+            .addEventListener("load", applyPagePreview);
 
         card.querySelector(".remove")
         .addEventListener("click",(ev)=>{
@@ -300,6 +349,7 @@ imageInput.addEventListener("change",(e)=>{
         });
     }
 
+    applyPagePreview();
     updateStatus();
 });
 
